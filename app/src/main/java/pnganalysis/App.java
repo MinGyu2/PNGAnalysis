@@ -7,6 +7,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.StringTokenizer;
 
 public class App {
     public static void main(String[] args) throws IOException{
@@ -24,22 +25,30 @@ public class App {
                 return;
             }
             // find length
+            
             var len = new byte[4];
-            fs.read(len);
-            int l = 0;
-            for(int i = 0;i<4;i++){
-                l <<=8;
-                l = (l<<8)+((int)len[i]&0xff);
+            while(fs.read(len)!=-1){
+                // fs.read(len);
+                int l = 0;
+                for(int i = 0;i<4;i++){
+                    l = (l<<8)+((int)len[i]&0xff);
+                }
+                byte[] data = new byte[l+4]; // type 같이 받아오기
+                // System.out.println((char))
+                byte[] crc = new byte[4]; // crc 받아오기
+                fs.read(data);
+                fs.read(crc);
+
+                StringBuilder sb = new StringBuilder();
+                sb.append((char)data[0]).append((char)data[1]).append((char)data[2]).append((char)data[3]);
+                System.out.println(sb);
+
+                crc32(data,crc);
             }
-            byte[] data = new byte[l+4]; // type 같이 받아오기
-            byte[] crc = new byte[4]; // crc 받아오기
-            fs.read(data);
-            fs.read(crc);
-            byte[] b = {0,0,0,0};
-            crc32(data, crc);
+
             // System.out.println(l);
             // System.out.println(Arrays.toString(data));
-            System.out.println(Arrays.toString(crc));
+            // System.out.println(Arrays.toString(crc));
             // IHDR
             // 4byte length
             // 4byte type (chunk name)
@@ -56,7 +65,7 @@ public class App {
         }
         int[] crcTable = new int[256];
         int ployd = 0xedb88320;//Long.parseLong("edb88320", 16);
-        System.out.println(String.format("%x",crc));
+        // System.out.println(String.format("%x",crc));
         for(int n = 0;n<256;n++){
             int c = n;
             for(int k = 0;k<8;k++){
@@ -68,13 +77,12 @@ public class App {
             }
             crcTable[n] = c;
         }
-        int c = crc^0xffffffff;
+        int c = 0xffffffff;
         for(int i = 0;i<stream.length;i++){
             c = crcTable[(c^stream[i]) & 0xff]^((c>>8)&0xffffff);
         }
-        System.out.println(String.format("%x", c^0xffffffff));
-        // System.out.println(Arrays.toString(crcTable));
-        // System.out.println(String.format("0x%x", crc));
+        c ^= 0xffffffff;
+        System.out.println(String.format("%x", c^crc));
     }
     static boolean isPNG(byte[] signature){
         //-119, 80, 78, 71, 13, 10, 26, 10
