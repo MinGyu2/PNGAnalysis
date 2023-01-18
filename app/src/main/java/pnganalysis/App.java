@@ -6,10 +6,9 @@ package pnganalysis;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
-import java.util.Arrays;
-import java.util.StringTokenizer;
 
 public class App {
+    static int iDatCnt = 0;
     public static void main(String[] args) throws IOException{
         var file = new File(args[0]);
         if(!file.exists()){
@@ -34,22 +33,18 @@ public class App {
                     l = (l<<8)+((int)len[i]&0xff);
                 }
                 byte[] data = new byte[l+4]; // type 같이 받아오기
-                // System.out.println((char))
                 byte[] crc = new byte[4]; // crc 받아오기
                 fs.read(data);
                 fs.read(crc);
+                // CRC 오류 있는지 확인
+                if(crc32(data,crc) != 0){
+                    System.out.println("fail!!");
+                    return;
+                }
 
-                StringBuilder sb = new StringBuilder();
-                sb.append((char)data[0]).append((char)data[1]).append((char)data[2]).append((char)data[3]);
-                System.out.println(sb);
-
-                crc32(data,crc);
+                printChunk(data, l);
             }
-
-            // System.out.println(l);
-            // System.out.println(Arrays.toString(data));
-            // System.out.println(Arrays.toString(crc));
-            // IHDR
+            // Chunk structure
             // 4byte length
             // 4byte type (chunk name)
             // length byte (chunk data)
@@ -58,7 +53,33 @@ public class App {
             fs.close();
         }
     }
-    static void crc32(byte[] stream, byte[] crcB){
+    static void printChunk(byte[] data, int len){
+        char[] type = new char[4];
+        for(int i = 0;i<4;i++){
+            type[i] = (char)data[i];
+        }
+        StringBuilder sb = new StringBuilder();
+        if(isEqual(type, "IHDR")){
+            new IHDRofPNG(data, 4);
+        }else if(isEqual(type, "IDAT")){
+            // s.append()
+            sb.append(++iDatCnt).append(' ');
+        }
+        sb.append(type);
+        sb.append(String.format(" (%d byte)", len));
+        System.out.println(sb);
+        // System.out.println();
+    }
+    static boolean isEqual(char[] type, String sType){ // 4byte
+        char[] cmp = sType.toCharArray();
+        for(int i = 0;i<4;i++){
+            if(type[i] != cmp[i]){
+                return false;
+            }
+        }
+        return true;
+    }
+    static int crc32(byte[] stream, byte[] crcB){
         int crc = 0;
         for(int i = 0;i<4;i++){
             crc = (crc<<8) + ((int)crcB[i]&0xff);
@@ -83,6 +104,7 @@ public class App {
         }
         c ^= 0xffffffff;
         System.out.println(String.format("%x", c^crc));
+        return c^crc;
     }
     static boolean isPNG(byte[] signature){
         //-119, 80, 78, 71, 13, 10, 26, 10
