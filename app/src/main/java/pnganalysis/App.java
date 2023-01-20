@@ -3,15 +3,20 @@
  */
 package pnganalysis;
 
+import java.io.BufferedWriter;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.OutputStreamWriter;
+import java.util.zip.DataFormatException;
 
 public class App {
     static int iDatCnt = 0;
+    static IHDRofPNG ihdr;
     static ByteArrayOutputStream byteOut = new ByteArrayOutputStream(); // IDAT
-    public static void main(String[] args) throws IOException{
+    public static void main(String[] args) throws IOException, DataFormatException{
         var file = new File(args[0]);
         if(!file.exists()){
             System.out.println("Do not exists this file!");
@@ -54,7 +59,22 @@ public class App {
         }finally{
             fs.close();
         }
-        System.out.println(byteOut.size());
+
+        var temp = new IDATToPixel(byteOut, ihdr.getWidth(), ihdr.getHeight());
+        System.out.println(temp.getPixel().size());
+        // Decompressing IDAT
+        // Reconstructing pixel data
+        // System.out.println(Arrays.toString(temp.getDecompressDate()));
+        // System.out.println(temp.getPixel());
+
+        FileOutputStream fileOut = new FileOutputStream("C:\\Users\\mq2022\\Desktop\\test.txt");
+        BufferedWriter bw = new BufferedWriter(new OutputStreamWriter(fileOut));
+        bw.append(String.format("%d\n%d\n",ihdr.getWidth(),ihdr.getHeight()));
+        for(int pixel:temp.getPixel()){
+            bw.append(String.format("%d ", pixel));
+        }
+        bw.close();
+        // bw.append(temp.getPixel().toString());
     }
     static void printChunk(byte[] data, int len){
         char[] type = new char[4];
@@ -63,7 +83,9 @@ public class App {
         }
         StringBuilder sb = new StringBuilder();
         if(isEqual(type, "IHDR")){
-            new IHDRofPNG(data, 4);
+            ihdr = new IHDRofPNG(data, 4);
+            System.out.println(ihdr.getWidth());
+            System.out.println(ihdr.getHeight());
         }else if(isEqual(type, "IDAT")){
             // s.append()
             sb.append(++iDatCnt).append(' ');//.append(Arrays.copyOfRange(data, 4, len+4).length);
@@ -108,7 +130,7 @@ public class App {
             c = crcTable[(c^stream[i]) & 0xff]^((c>>8)&0xffffff);
         }
         c ^= 0xffffffff;
-        System.out.println(String.format("%x", c^crc));
+        // System.out.println(String.format("%x", c^crc));
         return c^crc;
     }
     static boolean isPNG(byte[] signature){
