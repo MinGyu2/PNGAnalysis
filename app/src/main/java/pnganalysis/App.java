@@ -3,12 +3,14 @@
  */
 package pnganalysis;
 
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 
 public class App {
     static int iDatCnt = 0;
+    static ByteArrayOutputStream byteOut = new ByteArrayOutputStream(); // IDAT
     public static void main(String[] args) throws IOException{
         var file = new File(args[0]);
         if(!file.exists()){
@@ -52,6 +54,7 @@ public class App {
         }finally{
             fs.close();
         }
+        System.out.println(byteOut.size());
     }
     static void printChunk(byte[] data, int len){
         char[] type = new char[4];
@@ -63,7 +66,9 @@ public class App {
             new IHDRofPNG(data, 4);
         }else if(isEqual(type, "IDAT")){
             // s.append()
-            sb.append(++iDatCnt).append(' ');
+            sb.append(++iDatCnt).append(' ');//.append(Arrays.copyOfRange(data, 4, len+4).length);
+            byteOut.write(data, 4, len);
+            // Arrays.copyOfRange(data, 4, len);
         }
         sb.append(type);
         sb.append(String.format(" (%d byte)", len));
